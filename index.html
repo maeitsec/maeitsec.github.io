@@ -1,0 +1,1504 @@
+<!doctype html>
+<html lang="en" data-palette="blood" data-motion="on">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>maeitsec · Mheljun Enanoria — Offensive Security</title>
+<meta name="description" content="Principal Offensive Security & CVE Researcher. Web, API, Mobile, Active Directory, Cloud assessments." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ===== TOKENS ============================================ */
+  :root {
+    --bg: #0a0a0a;
+    --bg-2: #111111;
+    --bg-3: #161616;
+    --card: #0e0e0e;
+    --card-hover: #141414;
+    --border: #242424;
+    --border-bright: #3a3a3a;
+    --rule: #1c1c1c;
+
+    --text: #ededed;
+    --text-2: #a3a3a3;
+    --text-dim: #6b6b6b;
+    --text-faint: #404040;
+
+    --accent: #ff2d2d;
+    --accent-2: #ff5555;
+    --accent-soft: rgba(255,45,45,.10);
+    --live: #00ff85;
+    --live-soft: rgba(0,255,133,.12);
+    --warn: #ffb020;
+    --info: #4ea1ff;
+
+    --font-sans: "Space Grotesk", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    --font-display: "JetBrains Mono", ui-monospace, Menlo, monospace;
+
+    --max: 1320px;
+    --gutter: clamp(20px, 4vw, 56px);
+    --section-y: clamp(72px, 9vw, 130px);
+  }
+
+  /* Palette variants */
+  html[data-palette="matrix"] {
+    --accent: #00ff85; --accent-2: #5fff85; --accent-soft: rgba(0,255,133,.10);
+    --live: #00ff85;
+  }
+  html[data-palette="cyber"] {
+    --accent: #22e2ff; --accent-2: #66ecff; --accent-soft: rgba(34,226,255,.10);
+    --live: #ff2dd1;
+  }
+  html[data-palette="amber"] {
+    --accent: #ffb020; --accent-2: #ffc44a; --accent-soft: rgba(255,176,32,.10);
+    --live: #00ff85;
+  }
+  html[data-palette="paper"] {
+    --bg: #ededed; --bg-2: #e2e2e2; --bg-3: #d4d4d4;
+    --card: #f5f5f5; --card-hover: #e7e7e7;
+    --border: #c4c4c4; --border-bright: #8a8a8a; --rule: #d4d4d4;
+    --text: #0a0a0a; --text-2: #404040; --text-dim: #6b6b6b; --text-faint: #a3a3a3;
+    --accent: #cc0000; --accent-2: #990000; --accent-soft: rgba(204,0,0,.08);
+    --live: #2a7d3f;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  html { background: var(--bg); }
+  body {
+    font-family: var(--font-sans);
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    line-height: 1.55;
+    overflow-x: hidden;
+  }
+
+  /* CRT scan-line + grid overlay */
+  body::before {
+    content: "";
+    position: fixed; inset: 0; pointer-events: none; z-index: 1;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 64px 64px;
+    opacity: .15;
+    mask-image: radial-gradient(circle at 50% 30%, black 0%, transparent 75%);
+    -webkit-mask-image: radial-gradient(circle at 50% 30%, black 0%, transparent 75%);
+  }
+  body::after {
+    content: "";
+    position: fixed; inset: 0; pointer-events: none; z-index: 2;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,.014) 0 1px, transparent 1px 3px);
+    mix-blend-mode: overlay;
+  }
+  html[data-palette="paper"] body::before { opacity: .3; }
+  html[data-palette="paper"] body::after { display: none; }
+
+  ::selection { background: var(--accent); color: var(--bg); }
+
+  a { color: inherit; text-decoration: none; }
+
+  /* ===== LAYOUT ============================================ */
+  .wrap {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 var(--gutter);
+    position: relative;
+    z-index: 5;
+  }
+
+  /* ===== STATUS BAR ======================================== */
+  .statusbar {
+    position: relative; z-index: 6;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: .04em;
+  }
+  .statusbar__inner {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 28px;
+    gap: 24px;
+  }
+  .statusbar__group { display: flex; align-items: center; gap: 18px; }
+  .statusbar__group span b { color: var(--text-2); font-weight: 500; }
+  .statusbar__group .live {
+    color: var(--live);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .statusbar__group .live::before {
+    content: ""; width: 7px; height: 7px; background: var(--live);
+    box-shadow: 0 0 8px var(--live);
+    animation: blink 1.6s ease-in-out infinite;
+  }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+  @media (max-width: 720px) {
+    .statusbar__group:nth-child(3) { display: none; }
+  }
+  @media (max-width: 520px) {
+    .statusbar__group:nth-child(2) { display: none; }
+  }
+
+  /* ===== NAV =============================================== */
+  .nav {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    background: color-mix(in oklab, var(--bg) 82%, transparent);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav__inner {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 60px;
+  }
+  .brand {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+    display: inline-flex; align-items: center; gap: 10px;
+    letter-spacing: -.01em;
+  }
+  .brand__mark {
+    width: 22px; height: 22px;
+    display: grid; place-items: center;
+    background: var(--accent);
+    color: var(--bg);
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .brand__bracket { color: var(--accent); }
+  .nav__links {
+    display: flex; gap: 2px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0;
+  }
+  .nav__links a {
+    padding: 8px 12px;
+    color: var(--text-dim);
+    transition: color .12s, background .12s;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .nav__links a:hover { color: var(--text); background: var(--bg-2); }
+  .nav__links a span { color: var(--accent); font-weight: 700; margin-right: 6px; }
+  .nav__cta {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--bg);
+    background: var(--accent);
+    padding: 8px 16px;
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: background .12s, transform .12s;
+    border: 1px solid var(--accent);
+  }
+  .nav__cta:hover { background: var(--accent-2); }
+  .nav__cta::after {
+    content: "_"; font-weight: 700;
+    animation: cursor 1s steps(2) infinite;
+  }
+  @keyframes cursor { 50% { opacity: 0; } }
+
+  @media (max-width: 880px) { .nav__links { display: none; } }
+
+  /* ===== HERO ============================================== */
+  .hero {
+    padding: clamp(56px, 8vw, 110px) 0 clamp(64px, 9vw, 120px);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .hero__meta {
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+  }
+  .hero__meta b { color: var(--text); font-weight: 500; }
+  .hero__meta .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 5px 10px;
+    border: 1px solid var(--border-bright);
+    color: var(--text);
+  }
+  .hero__meta .pill::before {
+    content: ""; width: 7px; height: 7px; background: var(--live);
+    box-shadow: 0 0 10px var(--live);
+    animation: blink 1.6s ease-in-out infinite;
+  }
+
+  .hero__title {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(48px, 10.5vw, 156px);
+    line-height: .88;
+    letter-spacing: -.05em;
+    text-transform: uppercase;
+    color: var(--text);
+    margin: 0;
+  }
+  .hero__title .red { color: var(--accent); }
+  .hero__title .surname { display: block; color: var(--text-2); }
+
+  .hero__sub {
+    margin-top: 36px;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: clamp(28px, 4vw, 56px);
+    align-items: start;
+  }
+  @media (max-width: 940px) { .hero__sub { grid-template-columns: 1fr; } }
+
+  .hero__role {
+    font-size: clamp(15px, 1.4vw, 18px);
+    color: var(--text-2);
+    max-width: 56ch;
+    margin: 0;
+  }
+  .hero__role b { color: var(--text); font-weight: 600; }
+
+  .hero__certs-wrap {
+    border: 1px solid var(--border);
+    background: var(--card);
+  }
+  .hero__certs-head {
+    border-bottom: 1px solid var(--border);
+    padding: 8px 14px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    display: flex; justify-content: space-between;
+  }
+  .hero__certs-head b { color: var(--text); font-weight: 500; }
+  .hero__certs {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1px; background: var(--border);
+  }
+  @media (max-width: 560px) { .hero__certs { grid-template-columns: repeat(2, 1fr); } }
+  .cert {
+    background: var(--card);
+    padding: 14px 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    text-align: center;
+    letter-spacing: .04em;
+    transition: background .12s, color .12s;
+  }
+  .cert:hover { background: var(--bg); color: var(--accent); }
+
+  /* terminal panel */
+  .term {
+    margin-top: 56px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .term__head {
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-2);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: .06em;
+  }
+  .term__head .tlight { display: flex; gap: 6px; }
+  .term__dot { width: 9px; height: 9px; }
+  .term__dot--r { background: var(--accent); }
+  .term__dot--y { background: var(--warn); }
+  .term__dot--g { background: var(--live); }
+  .term__head .grow { flex: 1; }
+  .term__body {
+    padding: 22px 24px;
+    color: var(--text-2);
+    line-height: 1.85;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 36px;
+  }
+  @media (max-width: 760px) { .term__body { grid-template-columns: 1fr; } }
+  .term__line { white-space: pre-wrap; word-break: break-word; }
+  .term__prompt { color: var(--accent); font-weight: 700; }
+  .term__cmd { color: var(--text); }
+  .term__out { color: var(--text-2); }
+  .term__out--ok { color: var(--live); }
+  .term__cur {
+    display: inline-block; width: 8px; height: 1em;
+    background: var(--accent); vertical-align: -2px;
+    animation: blink 1s steps(2) infinite;
+    margin-left: 2px;
+  }
+
+  /* ===== SECTIONS ========================================== */
+  .section {
+    padding: var(--section-y) 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .section__head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 24px; flex-wrap: wrap;
+    margin-bottom: clamp(40px, 5vw, 64px);
+    padding-bottom: 22px;
+    border-bottom: 1px dashed var(--border);
+  }
+  .section__head-l { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+  .section__id {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0;
+  }
+  .section__title {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(34px, 5.5vw, 72px);
+    line-height: .95;
+    letter-spacing: -.04em;
+    text-transform: uppercase;
+    margin: 0;
+    color: var(--text);
+  }
+  .section__sub {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding-bottom: 6px;
+  }
+
+  /* ===== ABOUT ============================================= */
+  #about .about__grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: clamp(32px, 5vw, 72px);
+    align-items: start;
+  }
+  @media (max-width: 940px) { #about .about__grid { grid-template-columns: 1fr; } }
+
+  .about__text p {
+    font-size: clamp(16px, 1.4vw, 19px);
+    line-height: 1.6;
+    color: var(--text-2);
+    max-width: 60ch;
+    margin: 0 0 22px;
+  }
+  .about__text p b { color: var(--text); font-weight: 600; }
+  .about__text .lede {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: clamp(20px, 2.2vw, 28px);
+    color: var(--text);
+    line-height: 1.25;
+    letter-spacing: -.02em;
+  }
+  .about__text .lede em {
+    color: var(--accent);
+    font-style: normal;
+  }
+
+  .about__facts {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+  .fact {
+    background: var(--card);
+    padding: 22px;
+  }
+  .fact__label {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .fact__label::before {
+    content: ""; width: 6px; height: 6px; background: var(--accent);
+  }
+  .fact__val {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(32px, 3.4vw, 46px);
+    line-height: 1;
+    color: var(--text);
+    letter-spacing: -.04em;
+  }
+  .fact__val sup {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--accent);
+    vertical-align: top;
+    margin-left: 4px;
+    letter-spacing: 0;
+  }
+  .fact__note {
+    margin-top: 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-2);
+    letter-spacing: .02em;
+  }
+
+  /* ===== TOOLS ============================================= */
+  .tools {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+  .tool {
+    grid-column: span 3;
+    background: var(--card);
+    padding: clamp(22px, 2.2vw, 32px);
+    display: flex; flex-direction: column;
+    min-height: 260px;
+    transition: background .15s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .tool:hover { background: var(--card-hover); }
+  .tool--feat {
+    grid-column: span 6;
+    min-height: 280px;
+  }
+  @media (max-width: 880px) {
+    .tool, .tool--feat { grid-column: span 6; min-height: 220px; }
+  }
+  .tool__top {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: clamp(20px, 3vw, 32px);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .tool__num b { color: var(--accent); font-weight: 700; }
+  .tool__path { color: var(--text-2); }
+  .tool__arrow {
+    width: 34px; height: 34px;
+    border: 1px solid var(--border-bright);
+    display: grid; place-items: center;
+    color: var(--text-dim);
+    transition: color .15s, border-color .15s, background .15s;
+    flex-shrink: 0;
+  }
+  .tool:hover .tool__arrow {
+    color: var(--bg);
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .tool__title {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(24px, 2.8vw, 36px);
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: -.03em;
+    color: var(--text);
+    margin: 0 0 14px;
+  }
+  .tool--feat .tool__title {
+    font-size: clamp(34px, 4.5vw, 60px);
+    max-width: 18ch;
+  }
+  .tool__desc {
+    font-size: 14px;
+    color: var(--text-2);
+    line-height: 1.55;
+    max-width: 50ch;
+    margin: 0;
+    flex-grow: 1;
+  }
+  .tool__tags {
+    display: flex; flex-wrap: wrap; gap: 5px;
+    margin-top: 22px;
+  }
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    font-weight: 500;
+  }
+  .tag--accent {
+    color: var(--accent);
+    border-color: color-mix(in oklab, var(--accent) 60%, transparent);
+    background: var(--accent-soft);
+  }
+  .tag--live {
+    color: var(--live);
+    border-color: color-mix(in oklab, var(--live) 60%, transparent);
+    background: var(--live-soft);
+  }
+
+  /* feature tool ASCII decoration */
+  .tool--feat .tool__bg {
+    position: absolute;
+    right: -10px; bottom: -10px;
+    width: 360px; height: 200px;
+    opacity: .06;
+    pointer-events: none;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1;
+    color: var(--text);
+    white-space: pre;
+    overflow: hidden;
+  }
+
+  /* ===== CHEATSHEETS ======================================= */
+  .sheets {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+  @media (max-width: 1080px) { .sheets { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px)  { .sheets { grid-template-columns: 1fr; } }
+
+  .sheet {
+    background: var(--card);
+    padding: 24px;
+    display: flex; flex-direction: column; gap: 14px;
+    min-height: 210px;
+    transition: background .15s ease;
+    position: relative;
+  }
+  .sheet:hover { background: var(--card-hover); }
+  .sheet__num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: .04em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sheet__num::before {
+    content: ""; width: 14px; height: 1px; background: var(--accent);
+  }
+  .sheet__title {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 22px;
+    line-height: 1.05;
+    text-transform: uppercase;
+    letter-spacing: -.02em;
+    color: var(--text);
+    margin: 0;
+  }
+  .sheet__desc {
+    font-size: 13.5px;
+    color: var(--text-2);
+    line-height: 1.5;
+    margin: 0;
+    flex-grow: 1;
+  }
+  .sheet__tags {
+    display: flex; flex-wrap: wrap; gap: 5px;
+  }
+  .sheet__arrow {
+    position: absolute; top: 22px; right: 22px;
+    color: var(--text-faint);
+    transition: color .15s;
+  }
+  .sheet:hover .sheet__arrow { color: var(--accent); }
+
+  /* ===== CVES ============================================== */
+  .cves {
+    border: 1px solid var(--border);
+    background: var(--card);
+    font-family: var(--font-mono);
+  }
+  .cves__head {
+    display: grid;
+    grid-template-columns: 60px 170px 1fr 130px 70px;
+    gap: 18px;
+    padding: 12px 24px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .cve {
+    display: grid;
+    grid-template-columns: 60px 170px 1fr 130px 70px;
+    gap: 18px;
+    padding: 22px 24px;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    transition: background .12s;
+    font-size: 13px;
+  }
+  .cve:last-of-type { border-bottom: none; }
+  .cve:hover { background: var(--card-hover); }
+  @media (max-width: 880px) {
+    .cves__head { display: none; }
+    .cve { grid-template-columns: 1fr; gap: 6px; padding: 20px; }
+  }
+  .cve__idx {
+    color: var(--text-dim);
+    letter-spacing: .04em;
+  }
+  .cve__id {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 13.5px;
+  }
+  .cve__title {
+    font-family: var(--font-sans);
+    font-size: 15px;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .cve__desc {
+    font-family: var(--font-sans);
+    font-size: 13.5px;
+    color: var(--text-2);
+    margin-top: 4px;
+  }
+  .cve__year {
+    color: var(--text-dim);
+    font-size: 12px;
+    text-align: right;
+  }
+  .severity {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 5px 8px;
+    border: 1px solid;
+    display: inline-block;
+    text-align: center;
+    justify-self: start;
+  }
+  .sev--crit { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 60%, transparent); background: var(--accent-soft); }
+  .sev--high { color: var(--warn); border-color: color-mix(in oklab, var(--warn) 60%, transparent); background: color-mix(in oklab, var(--warn) 12%, transparent); }
+  .sev--med  { color: var(--info); border-color: color-mix(in oklab, var(--info) 60%, transparent); background: color-mix(in oklab, var(--info) 12%, transparent); }
+
+  .cves__foot {
+    padding: 16px 24px;
+    background: var(--bg-2);
+    border-top: 1px solid var(--border);
+    font-size: 11.5px;
+    color: var(--text-dim);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+    letter-spacing: .02em;
+  }
+  .cves__foot a {
+    color: var(--accent);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-size: 11px;
+  }
+  .cves__foot a:hover { text-decoration: underline; }
+
+  /* ===== SKILLS ============================================ */
+  .skills {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+  @media (max-width: 940px) { .skills { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .skills { grid-template-columns: 1fr; } }
+
+  .skillset {
+    background: var(--card);
+    padding: 24px;
+    transition: background .15s;
+  }
+  .skillset:hover { background: var(--card-hover); }
+  .skillset__label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 18px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .skillset__count { color: var(--text-dim); font-weight: 500; }
+  .skillset__items {
+    display: flex; flex-direction: column; gap: 4px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .skillset__items span {
+    color: var(--text-2);
+    padding: 4px 0;
+    transition: color .12s, transform .12s;
+    cursor: default;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .skillset__items span::before {
+    content: ">";
+    color: var(--text-faint);
+    font-weight: 700;
+  }
+  .skillset__items span:hover {
+    color: var(--text);
+    transform: translateX(3px);
+  }
+  .skillset__items span:hover::before { color: var(--accent); }
+
+  /* ===== CONTACT =========================================== */
+  .contact {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(28px, 4vw, 56px);
+    align-items: start;
+  }
+  @media (max-width: 940px) { .contact { grid-template-columns: 1fr; } }
+
+  .contact__lede {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(34px, 5vw, 60px);
+    line-height: .95;
+    letter-spacing: -.04em;
+    text-transform: uppercase;
+    color: var(--text);
+    max-width: 12ch;
+  }
+  .contact__lede em { color: var(--accent); font-style: normal; }
+  .contact__sub {
+    margin-top: 22px;
+    font-size: 16px;
+    color: var(--text-2);
+    max-width: 38ch;
+    font-family: var(--font-mono);
+  }
+  .contact__sub b { color: var(--text); font-weight: 600; }
+
+  .links {
+    border: 1px solid var(--border);
+    background: var(--card);
+  }
+  .link {
+    padding: 22px 26px;
+    display: grid;
+    grid-template-columns: 90px 1fr auto;
+    align-items: center;
+    gap: 20px;
+    transition: background .12s;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono);
+  }
+  .link:last-child { border-bottom: none; }
+  .link:hover { background: var(--card-hover); }
+  .link__type {
+    font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .link__name {
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .link__handle { color: var(--text-dim); font-weight: 400; }
+  .link__icon {
+    width: 34px; height: 34px;
+    border: 1px solid var(--border-bright);
+    display: grid; place-items: center;
+    color: var(--text-dim);
+    transition: color .12s, border-color .12s, background .12s;
+  }
+  .link:hover .link__icon { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+
+  /* ===== FOOTER ============================================ */
+  .foot {
+    padding: 28px 0 36px;
+    background: var(--bg);
+  }
+  .foot__inner {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 24px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  @media (max-width: 760px) {
+    .foot__inner { grid-template-columns: 1fr; text-align: center; }
+  }
+  .foot__sig {
+    color: var(--text-2);
+    text-align: center;
+  }
+  .foot__sig b { color: var(--accent); font-weight: 700; }
+  .foot__right { text-align: right; }
+  @media (max-width: 760px) { .foot__right { text-align: center; } }
+
+  /* motion-reduce */
+  html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ STATUS BAR ============ -->
+<div class="statusbar">
+  <div class="wrap statusbar__inner">
+    <div class="statusbar__group">
+      <span class="live">SYSTEM ONLINE</span>
+      <span><b>UTC</b> 00:00:00</span>
+    </div>
+    <div class="statusbar__group">
+      <span><b>CVES</b> 03</span>
+      <span><b>TOOLS</b> 05</span>
+      <span><b>SHEETS</b> 08</span>
+    </div>
+    <div class="statusbar__group">
+      <span><b>LOC</b> CONFIDENTIAL</span>
+      <span><b>v</b> 2.0.0</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============ NAV ============ -->
+<nav class="nav">
+  <div class="wrap nav__inner">
+    <a class="brand" href="#top" aria-label="maeitsec home">
+      <span class="brand__mark">M</span>
+      <span><span class="brand__bracket">[</span>maeitsec<span class="brand__bracket">]</span></span>
+    </a>
+    <div class="nav__links">
+      <a href="#about"><span>00</span>ABOUT</a>
+      <a href="#tools"><span>01</span>TOOLS</a>
+      <a href="#cheatsheets"><span>02</span>SHEETS</a>
+      <a href="#cves"><span>03</span>CVES</a>
+      <a href="#skills"><span>04</span>SKILLS</a>
+      <a href="#contact"><span>05</span>CONTACT</a>
+    </div>
+    <a class="nav__cta" href="#contact">
+      HIRE
+    </a>
+  </div>
+</nav>
+
+<main id="top">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero__meta">
+        <span class="pill">AVAILABLE / SECURITY CONSULTING</span>
+        <span><b>ROLE</b> PRINCIPAL · OFFSEC</span>
+        <span><b>YRS</b> 8+</span>
+        <span><b>LOC</b> REMOTE / WORLDWIDE</span>
+      </div>
+      <h1 class="hero__title">
+        MHELJUN<span class="red">.</span><br>
+        <span class="surname">ENANORIA</span>
+      </h1>
+
+      <div class="hero__sub">
+        <p class="hero__role">
+          <b>Principal Offensive Security &amp; CVE Researcher.</b> Eight years
+          of adversarial testing across Web, API, Mobile, Active Directory,
+          Cloud, and Thick Client. I break things on purpose — so they don't
+          break later, and so the writeup lands on someone's desk before it
+          lands on the news.
+        </p>
+
+        <div class="hero__certs-wrap">
+          <div class="hero__certs-head">
+            <span>// CERTIFICATIONS</span>
+            <b>08</b>
+          </div>
+          <div class="hero__certs">
+            <span class="cert">OSCP</span>
+            <span class="cert">OSWE</span>
+            <span class="cert">CRTO</span>
+            <span class="cert">CRTP</span>
+            <span class="cert">CBBH</span>
+            <span class="cert">CWES</span>
+            <span class="cert">eMAPT</span>
+            <span class="cert">HTB CAPE</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="term" aria-hidden="true">
+        <div class="term__head">
+          <span class="tlight">
+            <span class="term__dot term__dot--r"></span>
+            <span class="term__dot term__dot--y"></span>
+            <span class="term__dot term__dot--g"></span>
+          </span>
+          <span class="grow">root@maeitsec:~#</span>
+          <span>zsh · 80×24</span>
+        </div>
+        <div class="term__body">
+          <div>
+            <div class="term__line"><span class="term__prompt">$</span> <span class="term__cmd">whoami</span></div>
+            <div class="term__line"><span class="term__out">principal_offensive_security</span></div>
+            <div class="term__line">&nbsp;</div>
+            <div class="term__line"><span class="term__prompt">$</span> <span class="term__cmd">cat ./exp.txt</span></div>
+            <div class="term__line"><span class="term__out">8+ yrs · VAPT · Red Team Ops</span></div>
+          </div>
+          <div>
+            <div class="term__line"><span class="term__prompt">$</span> <span class="term__cmd">ls ./surfaces/</span></div>
+            <div class="term__line"><span class="term__out">webapp/  api/  mobile/  ad/</span></div>
+            <div class="term__line"><span class="term__out">cloud/   thick/  network/</span></div>
+            <div class="term__line">&nbsp;</div>
+            <div class="term__line"><span class="term__prompt">$</span> <span class="term__out--ok">_ready</span><span class="term__cur"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ABOUT ============ -->
+  <section class="section" id="about">
+    <div class="wrap">
+      <div class="section__head">
+        <div class="section__head-l">
+          <div class="section__id">[00]</div>
+          <h2 class="section__title">// ABOUT</h2>
+        </div>
+        <div class="section__sub">ORIGIN FILE</div>
+      </div>
+
+      <div class="about__grid">
+        <div class="about__text">
+          <p class="lede">
+            I find the gaps before they become headlines — <em>adversarial testing
+            grounded in real attacker tradecraft, not checklists.</em>
+          </p>
+          <p>
+            For nearly a decade I've led offensive engagements against banks,
+            SaaS platforms, defense contractors, and critical-infrastructure
+            operators. The day-job is mapping trust boundaries, then quietly
+            stepping across them — webapp, API, mobile, Active Directory,
+            cloud, thick client. Whatever the target, the assignment is the
+            same: <b>find what the defenders missed, write it down, hand it
+            back.</b>
+          </p>
+          <p>
+            On the side: open-source tooling, CVE disclosure, and the cheatsheet
+            library you're looking at. Most of it lives at
+            <b>maeitsec.github.io/toolkit</b>.
+          </p>
+        </div>
+        <div class="about__facts">
+          <div class="fact">
+            <div class="fact__label">YEARS_OFFSEC</div>
+            <div class="fact__val">8<sup>+</sup></div>
+            <div class="fact__note">in offensive security</div>
+          </div>
+          <div class="fact">
+            <div class="fact__label">CERTIFICATIONS</div>
+            <div class="fact__val">08<sup>×</sup></div>
+            <div class="fact__note">OSCP · OSWE · CRTO · more</div>
+          </div>
+          <div class="fact">
+            <div class="fact__label">ATTACK_SURFACES</div>
+            <div class="fact__val">06</div>
+            <div class="fact__note">web · api · mobile · ad · cloud · thick</div>
+          </div>
+          <div class="fact">
+            <div class="fact__label">STANCE</div>
+            <div class="fact__val">RED</div>
+            <div class="fact__note">team ops &amp; research</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TOOLS ============ -->
+  <section class="section" id="tools">
+    <div class="wrap">
+      <div class="section__head">
+        <div class="section__head-l">
+          <div class="section__id">[01]</div>
+          <h2 class="section__title">// TOOLS</h2>
+        </div>
+        <div class="section__sub">05 UTILITIES · OPEN-SOURCE</div>
+      </div>
+
+      <div class="tools">
+        <a class="tool tool--feat" href="https://maeitsec.github.io/toolkit/microsoft_dfir.html">
+          <div class="tool__bg" aria-hidden="true">▓▓░░▓░░░░▓░░░░▓░░▓░░░░░░░░▓░░░░░░
+░░▓░░▓░░▓░░░░░▓░░░░▓░░░░░░░░▓░░░░░
+▓░░░░▓░░▓░░░▓░░░░▓░░░░▓░░░░░▓░░░░░
+░░▓░░░░░░░░▓░░░░▓░░▓░░░░░░░▓░░░░░░
+▓░░░░░▓░░░░░░░▓░░░░▓░░░░░▓░░░░░░░░
+░▓░░░░░░░▓░░░░░░░░▓░░░░░░▓░░░░░░░░
+▓░░▓░░░░░░░░░▓░░░░░░░░░░▓░░░░░░░░░</div>
+          <div class="tool__top">
+            <span class="tool__num"><b>[01]</b> · FEATURED</span>
+            <span class="tool__path">~/tools/dfir/m365</span>
+          </div>
+          <h3 class="tool__title">M365 / Entra ID DFIR Report Generator</h3>
+          <p class="tool__desc">
+            Drop Microsoft 365 sign-in logs &amp; message-trace CSVs.
+            Auto-generates a full DFIR report — IOCs, MITRE ATT&amp;CK mapping,
+            timeline, remediation guidance — in one pass.
+          </p>
+          <div class="tool__tags">
+            <span class="tag tag--accent">DFIR</span>
+            <span class="tag">M365</span>
+            <span class="tag">ENTRA ID</span>
+            <span class="tag">BEC</span>
+            <span class="tag">AITM</span>
+          </div>
+        </a>
+
+        <a class="tool" href="https://maeitsec.github.io/toolkit/termshot.html">
+          <div class="tool__top">
+            <span class="tool__num"><b>[02]</b></span>
+            <span class="tool__path">~/tools/termshot</span>
+          </div>
+          <h3 class="tool__title">TermShot</h3>
+          <p class="tool__desc">
+            Beautiful terminal screenshots for READMEs and social media, with
+            animated playback and 12 colour themes.
+          </p>
+          <div class="tool__tags">
+            <span class="tag">PNG EXPORT</span>
+            <span class="tag">12 THEMES</span>
+            <span class="tag">ANIMATION</span>
+          </div>
+        </a>
+
+        <a class="tool" href="https://maeitsec.github.io/toolkit/maeitsecbins.html">
+          <div class="tool__top">
+            <span class="tool__num"><b>[03]</b></span>
+            <span class="tool__path">~/tools/maeitsecbins</span>
+          </div>
+          <h3 class="tool__title">maeitsecbins</h3>
+          <p class="tool__desc">
+            GTFOBins-style searchable index of pentesting binaries, commands,
+            and privesc techniques. Filter by surface, tactic, OS.
+          </p>
+          <div class="tool__tags">
+            <span class="tag">SEARCH</span>
+            <span class="tag">FILTER</span>
+            <span class="tag">20+ TOOLS</span>
+          </div>
+        </a>
+
+        <a class="tool" href="https://maeitsec.github.io/toolkit/maeitshells.html">
+          <div class="tool__top">
+            <span class="tool__num"><b>[04]</b></span>
+            <span class="tool__path">~/tools/maeitshells</span>
+          </div>
+          <h3 class="tool__title">maeitshells</h3>
+          <p class="tool__desc">
+            Frictionless reverse-shell and payload generator. Pick a platform,
+            an encoder, a transport — copy and pivot.
+          </p>
+          <div class="tool__tags">
+            <span class="tag">PAYLOADS</span>
+            <span class="tag">ENCODERS</span>
+          </div>
+        </a>
+
+        <a class="tool" href="https://maeitsec.github.io/toolkit/maeitad.html">
+          <div class="tool__top">
+            <span class="tool__num"><b>[05]</b></span>
+            <span class="tool__path">~/tools/maeitad</span>
+          </div>
+          <h3 class="tool__title">maeitad</h3>
+          <p class="tool__desc">
+            All-in-one Active Directory pentesting reference — enumeration,
+            Kerberos abuse, delegation, persistence — under one roof.
+          </p>
+          <div class="tool__tags">
+            <span class="tag">ACTIVE DIRECTORY</span>
+            <span class="tag">KERBEROS</span>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CHEATSHEETS ============ -->
+  <section class="section" id="cheatsheets">
+    <div class="wrap">
+      <div class="section__head">
+        <div class="section__head-l">
+          <div class="section__id">[02]</div>
+          <h2 class="section__title">// CHEATSHEETS</h2>
+        </div>
+        <div class="section__sub">08 REFERENCES</div>
+      </div>
+
+      <div class="sheets">
+        <a class="sheet" href="https://maeitsec.github.io/toolkit/cheatsheets/web-app.html">
+          <svg class="sheet__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          <span class="sheet__num">01 / WEB</span>
+          <h3 class="sheet__title">Web App</h3>
+          <p class="sheet__desc">XSS, SQLi, SSRF, IDOR, auth bypass, business logic, and more.</p>
+          <div class="sheet__tags">
+            <span class="tag">OWASP</span>
+            <span class="tag">BURP</span>
+            <span class="tag">SQLMAP</span>
+          </div>
+        </a>
+
+        <a class="sheet" href="https://maeitsec.github.io/toolkit/cheatsheets/api.html">
+          <svg class="sheet__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          <span class="sheet__num">02 / API</span>
+          <h3 class="sheet__title">API Security</h3>
+          <p class="sheet__desc">REST, GraphQL, SOAP methodologies &amp; common vulns.</p>
+          <div class="sheet__tags">
+            <span class="tag">REST</span>
+            <span class="tag">GRAPHQL</span>
+            <span class="tag">JWT</span>
+          </div>
+        </a>
+
+        <a class="sheet" href="https://maeitsec.github.io/toolkit/cheatsheets/mobile.html">
+          <svg class="sheet__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          <span class="sheet__num">03 / MOBILE</span>
+          <h3 class="sheet__title">Mobile</h3>
+          <p class="sheet__desc">iOS &amp; Android, jailbreak detection bypass, static + dynamic analysis.</p>
+          <div class="sheet__tags">
+            <span class="tag">FRIDA</span>
+            <span class="tag">OBJECTION</span>
+            <span class="tag">MOBSF</span>
+          </div>
+        </a>
+
+        <a class="sheet" href="https://maeitsec.github.io/toolkit/cheatsheets/active-directory.html">
+          <svg class="sheet__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          <span class="sheet__num">04 / AD</span>
+          <h3 class="sheet__title">Active Directory</h3>
+          <p class="sheet__desc">Enumeration, Kerberoasting, AS-REP roasting, delegation attacks.</p>
+          <div class="sheet__tags">
+            <span class="tag">BLOODHOUND</span>
+            <span class="tag">RUBEUS</span>
+            <span class="tag">MIMIKATZ</span>
+          </div>
+        </a>
+
+        <a class="sheet" href="https://maeitsec.github.io/toolkit/cheatsheets/network.html">
+          <svg class="sheet__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          <span class="sheet__num">05 / NET</span>
+          <h3 class="sheet__title">Network</h3>
+          <p class="sheet__desc">Enumeration, pivoting, tunneling, and post-exploitation.</p>
+          <div class="sheet__tags">
+            <span class="tag">NMAP</span>
+            <span class="tag">CHISEL</span>
+            <span class="tag">LIGOLO</span>
+          </div>
+        </a>
+
+        <a class="sheet" href="https://maeitsec.github.io/toolkit/cheatsheets/thick-client.html">
+          <svg class="sheet__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          <span class="sheet__num">06 / THICK</span>
+          <h3 class="sheet__title">Thick Client</h3>
+          <p class="sheet__desc">.NET &amp; Java app analysis, DLL hijacking, memory manipulation.</p>
+          <div class="sheet__tags">
+            <span class="tag">DNSPY</span>
+            <span class="tag">PROCMON</span>
+            <span class="tag">ECHO MIRAGE</span>
+          </div>
+        </a>
+
+        <a class="sheet" href="https://maeitsec.github.io/toolkit/cheatsheets/cloud.html">
+          <svg class="sheet__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          <span class="sheet__num">07 / CLOUD</span>
+          <h3 class="sheet__title">Cloud</h3>
+          <p class="sheet__desc">AWS, Azure, GCP misconfigurations and exploitation techniques.</p>
+          <div class="sheet__tags">
+            <span class="tag">AWS</span>
+            <span class="tag">AZURE</span>
+            <span class="tag">SCOUTSUITE</span>
+          </div>
+        </a>
+
+        <a class="sheet" href="https://maeitsec.github.io/toolkit/cheatsheets/privesc.html">
+          <svg class="sheet__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          <span class="sheet__num">08 / PRIVESC</span>
+          <h3 class="sheet__title">Privesc</h3>
+          <p class="sheet__desc">Windows &amp; Linux privesc vectors, enumeration scripts, techniques.</p>
+          <div class="sheet__tags">
+            <span class="tag">WINPEAS</span>
+            <span class="tag">LINPEAS</span>
+            <span class="tag">GTFOBINS</span>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CVES ============ -->
+  <section class="section" id="cves">
+    <div class="wrap">
+      <div class="section__head">
+        <div class="section__head-l">
+          <div class="section__id">[03]</div>
+          <h2 class="section__title">// PUBLISHED CVES</h2>
+        </div>
+        <div class="section__sub">DISCLOSURE LOG · 03 ENTRIES</div>
+      </div>
+
+      <div class="cves">
+        <div class="cves__head">
+          <span>IDX</span>
+          <span>CVE ID</span>
+          <span>VULNERABILITY</span>
+          <span>SEVERITY</span>
+          <span>YEAR</span>
+        </div>
+        <div class="cve">
+          <div class="cve__idx">01</div>
+          <div class="cve__id">CVE-2024-XXXXX</div>
+          <div>
+            <div class="cve__title">Authentication Bypass</div>
+            <div class="cve__desc">Critical authentication bypass allowing unauthorized administrative access.</div>
+          </div>
+          <span class="severity sev--crit">CRIT · 9.8</span>
+          <div class="cve__year">2024</div>
+        </div>
+        <div class="cve">
+          <div class="cve__idx">02</div>
+          <div class="cve__id">CVE-2024-XXXXX</div>
+          <div>
+            <div class="cve__title">Authenticated SQL Injection</div>
+            <div class="cve__desc">Post-auth SQL injection leading to full database exfiltration.</div>
+          </div>
+          <span class="severity sev--high">HIGH · 8.1</span>
+          <div class="cve__year">2024</div>
+        </div>
+        <div class="cve">
+          <div class="cve__idx">03</div>
+          <div class="cve__id">CVE-2023-XXXXX</div>
+          <div>
+            <div class="cve__title">Stored Cross-Site Scripting</div>
+            <div class="cve__desc">Stored XSS in administrative panel enabling session hijack.</div>
+          </div>
+          <span class="severity sev--med">MED · 6.4</span>
+          <div class="cve__year">2023</div>
+        </div>
+        <div class="cves__foot">
+          <span>// VENDOR &amp; PRODUCT DETAILS REDACTED UNTIL COORDINATED DISCLOSURE</span>
+          <a href="https://medium.com/@maeitsec">FULL WRITE-UPS ON MEDIUM →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SKILLS ============ -->
+  <section class="section" id="skills">
+    <div class="wrap">
+      <div class="section__head">
+        <div class="section__head-l">
+          <div class="section__id">[04]</div>
+          <h2 class="section__title">// SKILLS &amp; ARSENAL</h2>
+        </div>
+        <div class="section__sub">STACK</div>
+      </div>
+
+      <div class="skills">
+        <div class="skillset">
+          <div class="skillset__label">
+            <span>OFFENSIVE</span>
+            <span class="skillset__count">08</span>
+          </div>
+          <div class="skillset__items">
+            <span>Web App Pentesting</span>
+            <span>API Security</span>
+            <span>Mobile (iOS/Android)</span>
+            <span>Active Directory</span>
+            <span>Cloud Security</span>
+            <span>Thick Client</span>
+            <span>Network Pentest</span>
+            <span>Wireless</span>
+          </div>
+        </div>
+        <div class="skillset">
+          <div class="skillset__label">
+            <span>TOOLS</span>
+            <span class="skillset__count">08</span>
+          </div>
+          <div class="skillset__items">
+            <span>Burp Suite</span>
+            <span>Nmap</span>
+            <span>Metasploit</span>
+            <span>BloodHound</span>
+            <span>Frida</span>
+            <span>Cobalt Strike</span>
+            <span>Nuclei</span>
+            <span>AttackForge</span>
+          </div>
+        </div>
+        <div class="skillset">
+          <div class="skillset__label">
+            <span>DEV</span>
+            <span class="skillset__count">06</span>
+          </div>
+          <div class="skillset__items">
+            <span>Python</span>
+            <span>Bash</span>
+            <span>PowerShell</span>
+            <span>JavaScript</span>
+            <span>C#</span>
+            <span>SQL</span>
+          </div>
+        </div>
+        <div class="skillset">
+          <div class="skillset__label">
+            <span>FRAMEWORKS</span>
+            <span class="skillset__count">06</span>
+          </div>
+          <div class="skillset__items">
+            <span>OWASP Top 10</span>
+            <span>OWASP ASVS</span>
+            <span>OWASP MASVS</span>
+            <span>PTES</span>
+            <span>NIST</span>
+            <span>MITRE ATT&amp;CK</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT ============ -->
+  <section class="section" id="contact">
+    <div class="wrap">
+      <div class="section__head">
+        <div class="section__head-l">
+          <div class="section__id">[05]</div>
+          <h2 class="section__title">// CONTACT</h2>
+        </div>
+        <div class="section__sub">OPEN INBOX</div>
+      </div>
+
+      <div class="contact">
+        <div>
+          <div class="contact__lede">GOT A SYSTEM WORTH <em>BREAKING?</em></div>
+          <p class="contact__sub">
+            Security assessments, retainer-based testing, CVE research, or just
+            want to compare notes — pick a channel and send.
+          </p>
+        </div>
+        <div class="links">
+          <a class="link" href="/cdn-cgi/l/email-protection#a3c0cccdd7c2c0d7e3cec2c6cad7d0c6c08dc0ccce">
+            <span class="link__type">// PRIMARY</span>
+            <span class="link__name">EMAIL <span class="link__handle"><span class="__cf_email__" data-cfemail="6605090812070512260b07030f121503054805090b">[email&#160;protected]</span></span></span>
+            <span class="link__icon" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </span>
+          </a>
+          <a class="link" href="https://github.com/maeitsec">
+            <span class="link__type">// CODE</span>
+            <span class="link__name">GITHUB <span class="link__handle">@maeitsec</span></span>
+            <span class="link__icon" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </span>
+          </a>
+          <a class="link" href="https://linkedin.com/in/maeitsec">
+            <span class="link__type">// NETWORK</span>
+            <span class="link__name">LINKEDIN <span class="link__handle">in/maeitsec</span></span>
+            <span class="link__icon" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </span>
+          </a>
+          <a class="link" href="https://medium.com/@maeitsec">
+            <span class="link__type">// WRITING</span>
+            <span class="link__name">MEDIUM <span class="link__handle">@maeitsec</span></span>
+            <span class="link__icon" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="foot">
+  <div class="wrap foot__inner">
+    <span>© 2024–2026 · MAEITSEC</span>
+    <span class="foot__sig">HACK THE PLANET <b>·</b> RESPONSIBLY.</span>
+    <span class="foot__right">// DESIGNED IN THE OPEN</span>
+  </div>
+</footer>
+
+<!-- Tweaks panel root -->
+<div id="tweaks-root"></div>
+
+<!-- Tweak defaults -->
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  window.__TWEAK_DEFAULTS__ = /*EDITMODE-BEGIN*/{
+    "palette": "blood",
+    "motion": true,
+    "density": "comfortable",
+    "showTerminal": true,
+    "showStatusbar": true
+  }/*EDITMODE-END*/;
+
+  // Live clock in status bar
+  (function(){
+    const el = document.querySelector('.statusbar__group span:nth-child(2)');
+    if (!el) return;
+    function tick(){
+      const d = new Date();
+      const pad = n => String(n).padStart(2,'0');
+      const t = pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds());
+      el.innerHTML = '<b>UTC</b> ' + t;
+    }
+    tick();
+    setInterval(tick, 1000);
+  })();
+</script>
+
+<!-- React + Babel for Tweaks panel -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="tweaks-app.jsx"></script>
+
+</body>
+</html>
